@@ -25,20 +25,21 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
 
                 var recordid = context.request.parameters.recordId;
                 var recordName = context.request.parameters.recordName;
+                var loadrec;
                 if (recordName == "inventoryadjustment") {
-                    var loadrec = record.load({
+                    loadrec = record.load({
                         type: 'inventoryadjustment',
                         id: recordid,
                         isDynamic: true
                     });
-                }
-
-                if (recordName == "deposit") {
-                    var loadrec = record.load({
+                } else if (recordName == "deposit") {
+                    loadrec = record.load({
                         type: 'deposit',
                         id: recordid,
                         isDynamic: true
                     });
+                } else {
+                    throw new Error('Unsupported record type: ' + recordName);
                 }
                 var trandate = loadrec.getText({ fieldId: 'trandate' });
 
@@ -67,28 +68,24 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
 
                 var companyLogo = fileObj.url;
 
-                var UTCDate = new Date(new Date().toUTCString());
-                var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 15)); // Manilla Time.
-                var currentTime = PHPTime;
+                // Manila/Cebu time (UTC+8)
+                // NetSuite server-side new Date() returns PST, not UTC.
+                // Use getTimezoneOffset() to convert to true UTC first, then add Manila offset.
+                var now = new Date();
+                var utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+                var manilaMs = utcMs + (8 * 60 * 60 * 1000);
+                var manilaTime = new Date(manilaMs);
 
-                var todaysDate = new Date();
-                var monthNames = ["Jan", "Feb", "March", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-                var day = todaysDate.getDate();
-                log.debug('date', todaysDate);
-                log.debug('day', day);
+                var day = manilaTime.getDate();
+                var month = manilaTime.getMonth();
+                var year = manilaTime.getFullYear();
 
+                log.debug('Manila time', manilaTime);
 
-                var month = todaysDate.getMonth();
-
-
-                var year = todaysDate.getFullYear();
-
-                var hours = currentTime.getHours().toString();
-                var minutes = currentTime.getMinutes().toString();
-                var str = hours + ":" + minutes;
-                var ampmformat = formatAMPM(PHPTime);
-                log.audit('ampm format 1929=>', ampmformat);
+                var ampmformat = formatAMPM(manilaTime);
+                log.audit('ampm format', ampmformat);
 
                 var fullDate = monthNames[month] + ' ' + day + ', ' + year + ' ' + ampmformat
                 log.debug('print date', fullDate);
@@ -292,7 +289,7 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
 
 
                 var system_obj = search.create({
-                    type: 'inventoryadjustment',
+                    type: recordName,
                     filters:
                         [
                             ["internalid", "anyof", recordid]
@@ -368,13 +365,14 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
                 html += '<td align="right">'
                 html += '<table style="width: 100%; padding:5px;">'
                 html += '<tr>'
-                html += '<td align="right"><span class="title">Inventory Adjustment</span></td>'
+                var printTitle = recordName == "inventoryadjustment" ? "Inventory Adjustment" : "Deposit";
+                html += '<td align="right"><span class="title">' + printTitle + '</span></td>'
                 html += '</tr>'
                 html += '<tr rowspan="2" style="width: 100%;">'
                 html += '<td>'
-                html += '<table border="0.5" style="width: 100%;"><tr><td><span style="font-size:12px;" ><strong>Reference No:</strong></span><span style="font-size:12px;">&nbsp;&nbsp;&nbsp;' + tranid + '</span></td></tr>'
+                html += '<table border="0.5" style="width: 100%;"><tr><td><span style="font-size:12px;" ><strong>Reference No:</strong></span><span style="font-size:12px;">&nbsp;&nbsp;&nbsp;' + xml.escape(tranid) + '</span></td></tr>'
                 html += '<tr style="width: 100%;" >'
-                html += '<td><span style="font-size:12px;" ><strong>Transaction Date:</strong></span><span style="font-size:12px;">&nbsp;&nbsp;&nbsp;' + trandate + '</span></td></tr></table>'
+                html += '<td><span style="font-size:12px;" ><strong>Transaction Date:</strong></span><span style="font-size:12px;">&nbsp;&nbsp;&nbsp;' + xml.escape(trandate) + '</span></td></tr></table>'
                 html += '</td>'
                 html += '</tr>'
                 html += '</table>'
@@ -414,7 +412,7 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
                 html += '<br />'
                 html += '<table style="width: 100%;height:80px;" border="0.5">'
                 html += '<tr rowspan="4">'
-                html += '<td ><b>Particular:</b>&nbsp;&nbsp;' + memo + '</td>'
+                html += '<td ><b>Particular:</b>&nbsp;&nbsp;' + xml.escape(memo || '') + '</td>'
                 html += '</tr>'
                 html += '</table>'
                 html += '<table width="100%" border="0.1" style="margin-top:20px;">'

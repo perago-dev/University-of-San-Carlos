@@ -86,7 +86,7 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
 
                     var currencyText = '';
                     if (currency == 'USD') {
-                        currencyText = 'Pesos'
+                        currencyText = 'US Dollars'
                     } else if (currency == 'PHP') {
                         currencyText = 'Pesos'
                     } else if (currency == 'CAD') {
@@ -95,6 +95,8 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                         currencyText = 'Euros'
                     } else if (currency == 'SGD') {
                         currencyText = 'Singapore Dollars'
+                    } else {
+                        currencyText = currency; // Fallback to currency code
                     }
                     var location = loadrec.getText({
                         fieldId: 'location'
@@ -350,33 +352,29 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                         log.audit('accName', accName);
                         var creditamount = GL_search[i].getValue("creditamount");
                         if (accName.indexOf('Cash In Bank') != -1) {
-                            debTotal_InWords = parseFloat(debTotal_InWords) + parseFloat(creditamount.replace(',', ''));
+                            debTotal_InWords = parseFloat(debTotal_InWords) + parseFloat(creditamount.replace(/,/g, ''));
                         }
                     }
                     // debTotal_InWords = parseFloat(debTotal_InWords) / parseFloat(exchangeRate)
 
-                    var UTCDate = new Date(new Date().toUTCString());
-                    var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 15)); // Manilla Time.
-                    var currentTime = PHPTime;
+                    // Manila/Cebu time (UTC+8)
+                    // NetSuite server-side new Date() returns PST, not UTC.
+                    // Use getTimezoneOffset() to convert to true UTC first, then add Manila offset.
+                    var now = new Date();
+                    var utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+                    var manilaMs = utcMs + (8 * 60 * 60 * 1000);
+                    var manilaTime = new Date(manilaMs);
 
-                    var todaysDate = new Date();
-                    var monthNames = ["Jan", "Feb", "March", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-                    var day = todaysDate.getDate();
-                    log.debug('date', todaysDate);
-                    log.debug('day', day);
+                    var day = manilaTime.getDate();
+                    var month = manilaTime.getMonth();
+                    var year = manilaTime.getFullYear();
 
+                    log.debug('Manila time', manilaTime);
 
-                    var month = todaysDate.getMonth();
-
-
-                    var year = todaysDate.getFullYear();
-
-                    var hours = currentTime.getHours().toString();
-                    var minutes = currentTime.getMinutes().toString();
-                    var str = hours + ":" + minutes;
-                    var ampmformat = formatAMPM(PHPTime);
-                    log.audit('ampm format 1929=>', ampmformat);
+                    var ampmformat = formatAMPM(manilaTime);
+                    log.audit('ampm format', ampmformat);
 
                     var fullDate = monthNames[month] + ' ' + day + ', ' + year + ' ' + ampmformat
                     log.debug('print date', fullDate);
@@ -524,15 +522,15 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                         var debitamountUSD = 0;
 
                         if (creditamount != 0 && exchangeRate != null && exchangeRate != undefined && exchangeRate != '') {
-                            creditamountUSD = parseFloat(creditamount.replace(',', ''));
+                            creditamountUSD = parseFloat(creditamount.replace(/,/g, ''));
                         } else if (creditamount != 0) {
-                            creditamountUSD = parseFloat(creditamount.replace(',', ''));
+                            creditamountUSD = parseFloat(creditamount.replace(/,/g, ''));
                         }
 
                         if (debitamount != 0 && exchangeRate != null && exchangeRate != undefined && exchangeRate != '') {
-                            debitamountUSD = parseFloat(debitamount.replace(',', ''));
+                            debitamountUSD = parseFloat(debitamount.replace(/,/g, ''));
                         } else if (debitamount != 0) {
-                            debitamountUSD = parseFloat(debitamount.replace(',', ''));
+                            debitamountUSD = parseFloat(debitamount.replace(/,/g, ''));
                         }
 
                         log.debug('Original - Debit: ' + debitamount + ', Credit: ' + creditamount);
@@ -610,12 +608,8 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                             // htmlvar += '  <td align="center" border-right="1px" border-bottom="1px" style="white-space: pre-wrap;word-break: break-word">' + xml.escape(vehicleName) + '</td>';
 
                             // DISPLAY CONVERTED USD AMOUNTS WITH PROPER FORMATTING
-                            htmlvar += '  <td align="right" border-right="1px" border-bottom="1px">' + xml.escape({
-                                xmlText: numberWithCommas(debitamountUSD.toFixed(2))
-                            }) + '</td>';
-                            htmlvar += '  <td align="right" border-bottom="1px">' + xml.escape({
-                                xmlText: numberWithCommas(creditamountUSD.toFixed(2))
-                            }) + '</td>';
+                            htmlvar += '  <td align="right" border-right="1px" border-bottom="1px">' + xml.escape(numberWithCommas(debitamountUSD.toFixed(2))) + '</td>';
+                            htmlvar += '  <td align="right" border-bottom="1px">' + xml.escape(numberWithCommas(creditamountUSD.toFixed(2))) + '</td>';
                             htmlvar += '  </tr>';
                         }
 
@@ -635,12 +629,8 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                     htmlvar += '  <td colspan="6" align="left"  border-bottom="1px" width="80%" style="font-size:12px"><b>Overall Total</b></td>';
 
                     // DISPLAY TOTALS IN USD CURRENCY
-                    htmlvar += '  <td align="right" border-bottom="1px" width="10%"> <b> PHP <br />' + xml.escape({
-                        xmlText: numberWithCommas(debTotal.toFixed(2))
-                    }) + '</b></td>';
-                    htmlvar += '  <td align="right" border-bottom="1px" width="10%"> <b> PHP <br />' + xml.escape({
-                        xmlText: numberWithCommas(credTotal.toFixed(2))
-                    }) + '</b></td>';
+                    htmlvar += '  <td align="right" border-bottom="1px" width="10%"> <b> PHP <br />' + xml.escape(numberWithCommas(debTotal.toFixed(2))) + '</b></td>';
+                    htmlvar += '  <td align="right" border-bottom="1px" width="10%"> <b> PHP <br />' + xml.escape(numberWithCommas(credTotal.toFixed(2))) + '</b></td>';
 
 
                     htmlvar += '</tr>';
