@@ -68,7 +68,7 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
                 var companyLogo = fileObj.url;
 
                 var UTCDate = new Date(new Date().toUTCString());
-                var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 15)); // Manilla Time.
+                var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 16)); // Manila Time (NetSuite returns PST, PST+16=Manila)
                 var currentTime = PHPTime;
 
                 var todaysDate = new Date();

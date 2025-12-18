@@ -356,7 +356,7 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                     // debTotal_InWords = parseFloat(debTotal_InWords) / parseFloat(exchangeRate)
 
                     var UTCDate = new Date(new Date().toUTCString());
-                    var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 15)); // Manilla Time.
+                    var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 16)); // Manila Time (NetSuite returns PST, PST+16=Manila)
                     var currentTime = PHPTime;
 
                     var todaysDate = new Date();
