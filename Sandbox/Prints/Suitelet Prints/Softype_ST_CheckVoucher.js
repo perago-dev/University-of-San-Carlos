@@ -357,28 +357,24 @@ define(['N/record', 'N/xml', 'N/render', 'N/http', 'N/search', 'N/config', 'N/fi
                     }
                     // debTotal_InWords = parseFloat(debTotal_InWords) / parseFloat(exchangeRate)
 
-                    var UTCDate = new Date(new Date().toUTCString());
-                    var PHPTime = new Date(UTCDate.setHours(UTCDate.getHours() + 8)); // Manila Time (UTC+8)
-                    var currentTime = PHPTime;
+                    // Manila/Cebu time (UTC+8)
+                    // NetSuite server-side new Date() returns PST, not UTC.
+                    // Use getTimezoneOffset() to convert to true UTC first, then add Manila offset.
+                    var now = new Date();
+                    var utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+                    var manilaMs = utcMs + (8 * 60 * 60 * 1000);
+                    var manilaTime = new Date(manilaMs);
 
-                    var todaysDate = new Date();
                     var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-                    var day = todaysDate.getDate();
-                    log.debug('date', todaysDate);
-                    log.debug('day', day);
+                    var day = manilaTime.getDate();
+                    var month = manilaTime.getMonth();
+                    var year = manilaTime.getFullYear();
 
+                    log.debug('Manila time', manilaTime);
 
-                    var month = todaysDate.getMonth();
-
-
-                    var year = todaysDate.getFullYear();
-
-                    var hours = currentTime.getHours().toString();
-                    var minutes = currentTime.getMinutes().toString();
-                    var str = hours + ":" + minutes;
-                    var ampmformat = formatAMPM(PHPTime);
-                    log.audit('ampm format 1929=>', ampmformat);
+                    var ampmformat = formatAMPM(manilaTime);
+                    log.audit('ampm format', ampmformat);
 
                     var fullDate = monthNames[month] + ' ' + day + ', ' + year + ' ' + ampmformat
                     log.debug('print date', fullDate);
