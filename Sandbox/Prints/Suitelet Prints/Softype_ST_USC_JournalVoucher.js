@@ -435,20 +435,20 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
                     html += '<td border="0.1" align="left" style="width:180px;font-size:11px;">' + xml.escape(data.description || '') + '</td>'
                     html += '<td border="0.1" align="left" style="width:150px;font-size:11px;">' + xml.escape(data.accountname || '') + '</td>'
                     if (recordName != "inventoryadjustment") {
-                        html += '<td border="0.1" align="right" style="width:150px;font-size:11px;">' + xml.escape(data.lineDepartment || '') + '</td>'
+                        html += '<td border="0.1" align="left" style="width:150px;font-size:11px;">' + xml.escape(data.lineDepartment || '') + '</td>'
                     }
                     else {
                         if (department != '') {
-                            html += '<td border="0.1" align="right" style="width:150px;font-size:11px;">' + xml.escape(department) + '</td>'
+                            html += '<td border="0.1" align="left" style="width:150px;font-size:11px;">' + xml.escape(department) + '</td>'
                         }
                         else if (trustFund != '') {
-                            html += '<td border="0.1" align="right" style="width:150px;font-size:11px;">' + xml.escape(trustFund) + '</td>'
+                            html += '<td border="0.1" align="left" style="width:150px;font-size:11px;">' + xml.escape(trustFund) + '</td>'
                         }
                         else if (dcbFund != '') {
-                            html += '<td border="0.1" align="right" style="width:150px;font-size:11px;">' + xml.escape(dcbFund) + '</td>'
+                            html += '<td border="0.1" align="left" style="width:150px;font-size:11px;">' + xml.escape(dcbFund) + '</td>'
                         }
                         else {
-                            html += '<td border="0.1" align="right" style="width:150px;font-size:11px;"></td>'
+                            html += '<td border="0.1" align="left" style="width:150px;font-size:11px;"></td>'
                         }
                     }
                     html += '<td border="0.1" align="center" style="width:60px;font-size:11px;">' + (data.quantity ? numberWithCommas(Math.abs(data.quantity)) : '') + '</td>'
@@ -483,14 +483,12 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
                 html += '<tr> <td>&nbsp;</td> </tr>'
                 html += '</table>'
 
-                html += '<table border="0.1" style="width:375px; padding-top: -60;">'
-                html += '<tr>'
-                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" style="width:156px; font-size:12px">Prepared By:</td>'
-                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" style="width:130px; font-size:12px">Checked by:</td>'
-                html += '</tr><tr>'
-                html += '<td border-left="0.1" border-right="0.1" border-bottom="0.1" style="width:156px; font-size:12px">' + preparedBy + '</td>'
-                html += '<td border-left="0.1" border-right="0.1" border-bottom="0.1" style="width:130px; font-size:12px">' + checkedBy + '</td>'
-                html += '</tr></table>'
+                html += '<table style="width:375px; padding-top: -60px; line-height: 20px;">'
+                html += '<tr style="height: 30px;">'
+                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" border-bottom="0.1" style="width:170px; font-size:12px; padding: 2px;"><p>Prepared By:<br/>' + preparedBy + '</p></td>'
+                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" border-bottom="0.1" style="width:140px; font-size:12px; padding: 2px;"><p>Checked by:<br/>' + checkedBy + '</p></td>'
+                html += '</tr>'
+                html += '</table>'
 
                 html += '<table style="width:727px;">'
                 html += '<tr>'

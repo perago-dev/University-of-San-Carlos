@@ -30,14 +30,14 @@ define(['N/ui/dialog', 'N/log'], function (dialog, log) {
         // Check Class
         var classValue = currentRecord.getValue({ fieldId: 'class' });
         if (classValue) {
-            fieldsWithValues.push('Class');
+            fieldsWithValues.push('Trust Fund');
             count++;
         }
 
         // Check Custom Segment (Cost Center Fund)
         var costCenter = currentRecord.getValue({ fieldId: 'cseg_usc_dcb_fund' });
         if (costCenter) {
-            fieldsWithValues.push('Cost Center (Fund)');
+            fieldsWithValues.push('DCB Fund');
             count++;
         }
 
@@ -66,7 +66,7 @@ define(['N/ui/dialog', 'N/log'], function (dialog, log) {
                 if (validation.count > 1) {
                     dialog.alert({
                         title: 'Validation Error',
-                        message: 'Error: Only one field can have a value among Department, Trust fund, and DCB fund. Please clear the other fields.\n\nCurrently filled: ' + validation.fields.join(', ')
+                        message: 'Error: Only one field can have a value among Department, Trust fund, and DCB fund. Please clear the other fields.'
                     });
 
                     // Clear the field that was just changed
@@ -95,11 +95,23 @@ define(['N/ui/dialog', 'N/log'], function (dialog, log) {
 
             log.debug('Save Validation', 'Count: ' + validation.count + ', Fields with values: ' + validation.fields.join(', '));
 
-            // If more than one field has a value, show alert and prevent save
+            // NEW VALIDATION: Check if all three fields are empty
+            if (validation.count === 0) {
+                dialog.alert({
+                    title: 'Required Field Missing',
+                    message: 'Please fill at least one field among Department, Trust fund, or DCB fund before saving.'
+                });
+
+                log.audit('Save Blocked', 'Save prevented - No cost center field has a value');
+
+                return false; // Prevent save
+            }
+
+            // EXISTING VALIDATION: If more than one field has a value, show alert and prevent save
             if (validation.count > 1) {
                 dialog.alert({
                     title: 'Cannot Save Record',
-                    message: 'Cannot save: Only one field can have a value among Department, Trust fund, and DCB fund. Please correct before saving.\n\nCurrently filled: ' + validation.fields.join(', ')
+                    message: 'Cannot save: Only one field can have a value among Department, Trust fund, and DCB fund. Please correct before saving.'
                 });
 
                 log.audit('Save Blocked', 'Save prevented due to multiple fields having values: ' + validation.fields.join(', '));
@@ -107,8 +119,8 @@ define(['N/ui/dialog', 'N/log'], function (dialog, log) {
                 return false; // Prevent save
             }
 
-            // Allow save if 0 or 1 field has a value
-            log.audit('Save Allowed', 'Validation passed. Fields with values: ' + validation.count);
+            // Allow save if exactly 1 field has a value
+            log.audit('Save Allowed', 'Validation passed. Field with value: ' + validation.fields.join(', '));
             return true;
 
         } catch (e) {
