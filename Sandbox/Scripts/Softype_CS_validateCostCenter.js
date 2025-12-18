@@ -27,17 +27,17 @@ define(['N/ui/dialog', 'N/log'], function (dialog, log) {
             count++;
         }
 
-        // Check Class
+        // Check Class (Trust Fund)
         var classValue = currentRecord.getValue({ fieldId: 'class' });
         if (classValue) {
-            fieldsWithValues.push('Class');
+            fieldsWithValues.push('Trust Fund');
             count++;
         }
 
-        // Check Custom Segment (Cost Center Fund)
+        // Check Custom Segment (DCB Fund)
         var costCenter = currentRecord.getValue({ fieldId: 'cseg_usc_dcb_fund' });
         if (costCenter) {
-            fieldsWithValues.push('Cost Center (Fund)');
+            fieldsWithValues.push('DCB Fund');
             count++;
         }
 
