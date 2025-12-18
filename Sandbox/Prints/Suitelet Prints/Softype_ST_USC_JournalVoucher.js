@@ -483,8 +483,8 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
 
                 html += '<table style="width:375px; padding-top: -60px; line-height: 20px;">'
                 html += '<tr style="height: 30px;">'
-                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" border-bottom="0.1" style="width:170px; font-size:12px; padding: 2px;"><p>Prepared By:<br/>' + preparedBy + '</p></td>'
-                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" border-bottom="0.1" style="width:140px; font-size:12px; padding: 2px;"><p>Checked by:<br/>' + checkedBy + '</p></td>'
+                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" border-bottom="0.1" style="width:165px; font-size:12px; padding: 2px;"><p>Prepared By:<br/>' + preparedBy + '</p></td>'
+                html += '<td border-left="0.1" border-right="0.1" border-top="0.1" border-bottom="0.1" style="width:135px; font-size:12px; padding: 2px;"><p>Checked by:<br/>' + checkedBy + '</p></td>'
                 html += '</tr>'
                 html += '</table>'
 
