@@ -3,127 +3,149 @@
  * @NScriptType ClientScript
  * @NModuleScope SameAccount
  */
+
 /***************************************************************************************
  ** Copyright (c) 1998-2025 Softype, Inc.
- ** Ventus Infotech Private Limited, 3012, NIBR Corporate Park 1 Aerocity,Andheri - Kurla Rd, Safed Pul , Saki Naka,, Mumbai INDIA 400 072.
  ** All Rights Reserved.
- ** This software is the confidential and proprietary information of Softype, Inc. ("Confidential Information").
- **You shall not disclose such Confidential Information and shall use it only in accordance with the terms of the license agreement you entered into with Softype.
  **
- **@Author      :  saisubramani
- **@Dated       :  12th Dec, 2025
- **@Version     :  2.1
- **@Description :  Clientscript to validate the cost center value
+ ** @Author      : saisubramani
+ ** @Dated       : 12th Dec, 2025
+ ** @Version     : 2.1
+ ** @Description : Client script to validate cost center fields (only one can have a value)
+ ** @Update      : Refactored to use shared constants, added pageInit validation
  ***************************************************************************************/
-define(['N/ui/dialog', 'N/log'], function (dialog, log) {
-    function checkFieldValues(currentRecord) {
-        var fieldsWithValues = [];
-        var count = 0;
+
+define(['N/ui/dialog', 'N/log', './lib/constants'], (dialog, log, constants) => {
+
+    const { FIELDS, COST_CENTER_LABELS } = constants;
+
+    /**
+     * Check which cost center fields have values
+     * @param {Record} currentRecord
+     * @returns {Object} { count, fields }
+     */
+    const checkFieldValues = (currentRecord) => {
+        const fieldsWithValues = [];
+        let count = 0;
 
         // Check Department
-        var department = currentRecord.getValue({ fieldId: 'department' });
-        if (department) {
-            fieldsWithValues.push('Department');
+        if (currentRecord.getValue({ fieldId: FIELDS.DEPARTMENT })) {
+            fieldsWithValues.push(COST_CENTER_LABELS.DEPARTMENT);
             count++;
         }
 
-        // Check Class
-        var classValue = currentRecord.getValue({ fieldId: 'class' });
-        if (classValue) {
-            fieldsWithValues.push('Class');
+        // Check Class (Trust Fund)
+        if (currentRecord.getValue({ fieldId: FIELDS.CLASS })) {
+            fieldsWithValues.push(COST_CENTER_LABELS.TRUST_FUND);
             count++;
         }
 
-        // Check Custom Segment (Cost Center Fund)
-        var costCenter = currentRecord.getValue({ fieldId: 'cseg_usc_dcb_fund' });
-        if (costCenter) {
-            fieldsWithValues.push('Cost Center (Fund)');
+        // Check Custom Segment (DCB Fund)
+        if (currentRecord.getValue({ fieldId: FIELDS.DCB_FUND })) {
+            fieldsWithValues.push(COST_CENTER_LABELS.DCB_FUND);
             count++;
         }
 
-        return {
-            count: count,
-            fields: fieldsWithValues
-        };
-    }
+        return { count, fields: fieldsWithValues };
+    };
 
-    function fieldChanged(context) {
+    /**
+     * Show validation error dialog
+     * @param {string} title
+     * @param {string[]} fields
+     */
+    const showValidationError = (title, fields) => {
+        dialog.alert({
+            title,
+            message: `Error: Only one field can have a value among ${COST_CENTER_LABELS.DEPARTMENT}, ${COST_CENTER_LABELS.TRUST_FUND}, and ${COST_CENTER_LABELS.DCB_FUND}. Please clear the other fields.\n\nCurrently filled: ${fields.join(', ')}`
+        });
+    };
+
+    /**
+     * Validate on page load (edit mode)
+     */
+    const pageInit = (context) => {
+        if (context.mode !== 'edit') return;
+
         try {
-            var currentRecord = context.currentRecord;
-            var fieldId = context.fieldId;
+            const currentRecord = context.currentRecord;
+            const validation = checkFieldValues(currentRecord);
+
+            log.debug('pageInit Validation', `Count: ${validation.count}, Fields: ${validation.fields.join(', ')}`);
+
+            if (validation.count > 1) {
+                dialog.alert({
+                    title: 'Data Warning',
+                    message: `This record has multiple cost center fields populated: ${validation.fields.join(', ')}. Please correct before saving.`
+                });
+            }
+        } catch (e) {
+            log.error('pageInit Error', e.toString());
+        }
+    };
+
+    /**
+     * Validate when cost center fields change
+     */
+    const fieldChanged = (context) => {
+        try {
+            const currentRecord = context.currentRecord;
+            const fieldId = context.fieldId;
 
             // Only validate if one of the three fields was changed
-            if (fieldId === 'department' || fieldId === 'class' || fieldId === 'cseg_usc_dcb_fund') {
-
-                log.debug('fieldChanged', 'Field changed: ' + fieldId);
-
-                // Check field values
-                var validation = checkFieldValues(currentRecord);
-
-                log.debug('Field Validation', 'Count: ' + validation.count + ', Fields with values: ' + validation.fields.join(', '));
-
-                // If more than one field has a value, show alert and clear the current field
-                if (validation.count > 1) {
-                    dialog.alert({
-                        title: 'Validation Error',
-                        message: 'Error: Only one field can have a value among Department, Trust fund, and DCB fund. Please clear the other fields.\n\nCurrently filled: ' + validation.fields.join(', ')
-                    });
-
-                    // Clear the field that was just changed
-                    currentRecord.setValue({
-                        fieldId: fieldId,
-                        value: ''
-                    });
-
-                    log.audit('Field Cleared', 'Cleared field: ' + fieldId + ' due to multiple fields having values');
-                }
+            if (fieldId !== FIELDS.DEPARTMENT && fieldId !== FIELDS.CLASS && fieldId !== FIELDS.DCB_FUND) {
+                return;
             }
 
+            log.debug('fieldChanged', `Field changed: ${fieldId}`);
+
+            const validation = checkFieldValues(currentRecord);
+            log.debug('Field Validation', `Count: ${validation.count}, Fields: ${validation.fields.join(', ')}`);
+
+            if (validation.count > 1) {
+                showValidationError('Validation Error', validation.fields);
+
+                // Clear the field that was just changed
+                currentRecord.setValue({ fieldId, value: '' });
+                log.audit('Field Cleared', `Cleared field: ${fieldId} due to multiple fields having values`);
+            }
         } catch (e) {
             log.error('fieldChanged Error', e.toString());
         }
-    }
+    };
 
-    function saveRecord(context) {
+    /**
+     * Validate before save
+     */
+    const saveRecord = (context) => {
         try {
-            var currentRecord = context.currentRecord;
-
+            const currentRecord = context.currentRecord;
             log.debug('saveRecord', 'Validating before save');
 
-            // Check field values
-            var validation = checkFieldValues(currentRecord);
+            const validation = checkFieldValues(currentRecord);
+            log.debug('Save Validation', `Count: ${validation.count}, Fields: ${validation.fields.join(', ')}`);
 
-            log.debug('Save Validation', 'Count: ' + validation.count + ', Fields with values: ' + validation.fields.join(', '));
-
-            // If more than one field has a value, show alert and prevent save
             if (validation.count > 1) {
-                dialog.alert({
-                    title: 'Cannot Save Record',
-                    message: 'Cannot save: Only one field can have a value among Department, Trust fund, and DCB fund. Please correct before saving.\n\nCurrently filled: ' + validation.fields.join(', ')
-                });
-
-                log.audit('Save Blocked', 'Save prevented due to multiple fields having values: ' + validation.fields.join(', '));
-
-                return false; // Prevent save
+                showValidationError('Cannot Save Record', validation.fields);
+                log.audit('Save Blocked', `Save prevented: ${validation.fields.join(', ')}`);
+                return false;
             }
 
-            // Allow save if 0 or 1 field has a value
-            log.audit('Save Allowed', 'Validation passed. Fields with values: ' + validation.count);
+            log.audit('Save Allowed', `Validation passed. Fields with values: ${validation.count}`);
             return true;
-
         } catch (e) {
             log.error('saveRecord Error', e.toString());
-            // In case of error, prevent save to be safe
             dialog.alert({
                 title: 'Error',
                 message: 'An error occurred during validation. Please contact your administrator.'
             });
             return false;
         }
-    }
+    };
 
     return {
-        fieldChanged: fieldChanged,
-        saveRecord: saveRecord
+        pageInit,
+        fieldChanged,
+        saveRecord
     };
 });
