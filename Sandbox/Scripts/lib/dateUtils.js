@@ -25,11 +25,14 @@ define([], () => {
      * We use getTimezoneOffset() to convert to true UTC first,
      * then add Manila's UTC+8 offset.
      *
-     * @returns {Date} Date object with Manila time values
+     * IMPORTANT: Use getUTC* methods when extracting values from the returned Date,
+     * since we've shifted the timestamp to represent Manila time in UTC terms.
+     *
+     * @returns {Date} Date object with Manila time stored as UTC values
      */
     const getManilaTime = () => {
         const now = new Date();
-        // Convert to UTC milliseconds (getTimezoneOffset returns minutes, negative for PST)
+        // Convert to UTC milliseconds (getTimezoneOffset returns minutes, positive for behind UTC)
         const utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
         // Add Manila offset (UTC+8)
         const manilaMs = utcMs + (MANILA_UTC_OFFSET_HOURS * 60 * 60 * 1000);
@@ -38,14 +41,15 @@ define([], () => {
 
     /**
      * Format date as "Mon DD, YYYY HH:MM am/pm"
+     * Uses UTC methods since getManilaTime stores Manila time as UTC values
      * @param {Date} date - Date to format (defaults to current Manila time)
      * @returns {string}
      */
     const formatPrintDate = (date) => {
         const d = date || getManilaTime();
-        const day = d.getDate();
-        const month = MONTH_NAMES_SHORT[d.getMonth()];
-        const year = d.getFullYear();
+        const day = d.getUTCDate();
+        const month = MONTH_NAMES_SHORT[d.getUTCMonth()];
+        const year = d.getUTCFullYear();
         const time = formatAMPM(d);
 
         return `${month} ${day}, ${year} ${time}`;
@@ -53,12 +57,13 @@ define([], () => {
 
     /**
      * Format time as "HH:MM am/pm"
+     * Uses UTC methods since getManilaTime stores Manila time as UTC values
      * @param {Date} date
      * @returns {string}
      */
     const formatAMPM = (date) => {
-        let hours = date.getHours();
-        let minutes = date.getMinutes();
+        let hours = date.getUTCHours();
+        let minutes = date.getUTCMinutes();
         const ampm = hours >= 12 ? 'pm' : 'am';
 
         hours = hours % 12;
@@ -70,16 +75,17 @@ define([], () => {
 
     /**
      * Get formatted date components
+     * Uses UTC methods since getManilaTime stores Manila time as UTC values
      * @param {Date} date - Date to format (defaults to current Manila time)
      * @returns {Object} { day, month, monthName, year, time, fullDate }
      */
     const getDateComponents = (date) => {
         const d = date || getManilaTime();
         return {
-            day: d.getDate(),
-            month: d.getMonth(),
-            monthName: MONTH_NAMES_SHORT[d.getMonth()],
-            year: d.getFullYear(),
+            day: d.getUTCDate(),
+            month: d.getUTCMonth(),
+            monthName: MONTH_NAMES_SHORT[d.getUTCMonth()],
+            year: d.getUTCFullYear(),
             time: formatAMPM(d),
             fullDate: formatPrintDate(d)
         };

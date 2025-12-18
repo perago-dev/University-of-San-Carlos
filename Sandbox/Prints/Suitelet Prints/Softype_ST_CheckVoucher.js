@@ -37,6 +37,11 @@ define([
 
         try {
             const recordid = context.request.parameters.recordid;
+            if (!recordid) {
+                context.response.write('Error: Missing recordid parameter');
+                return;
+            }
+
             const loadrec = record.load({
                 type: 'check',
                 id: recordid,
@@ -58,11 +63,14 @@ define([
 
         } catch (e) {
             log.error('Check Voucher Error', e);
+            context.response.write('Error generating Check Voucher. Please contact support.');
         }
     };
 
     const extractHeaderData = (loadrec) => {
-        const currency = loadrec.getText({ fieldId: FIELDS.CURRENCY });
+        // Use getValue for currency code (e.g., 'PHP'), getText for display name
+        const currencyCode = loadrec.getValue({ fieldId: FIELDS.CURRENCY });
+        const currencyDisplay = loadrec.getText({ fieldId: FIELDS.CURRENCY });
         return {
             transactionNumber: loadrec.getValue({ fieldId: FIELDS.TRANSACTION_NUMBER }) || '',
             entity: loadrec.getText({ fieldId: FIELDS.ENTITY }) || '',
@@ -71,8 +79,8 @@ define([
             checkNo: loadrec.getValue({ fieldId: FIELDS.TRAN_ID }) || '',
             amount: loadrec.getValue({ fieldId: FIELDS.USER_TOTAL }) || 0,
             location: loadrec.getText({ fieldId: FIELDS.LOCATION }) || '',
-            currency,
-            currencyText: CURRENCY_TEXT[currency] || currency || 'Pesos',
+            currency: currencyCode,
+            currencyText: CURRENCY_TEXT[currencyCode] || currencyDisplay || 'Pesos',
             exchangeRate: loadrec.getValue({ fieldId: FIELDS.EXCHANGE_RATE })
         };
     };
@@ -80,10 +88,18 @@ define([
     const getCompanyData = () => {
         const companyInfo = config.load({ type: config.Type.COMPANY_INFORMATION });
         const companyFileID = companyInfo.getValue({ fieldId: 'pagelogo' });
-        const fileObj = file.load({ id: companyFileID });
+        let logoUrl = '';
+        if (companyFileID) {
+            try {
+                const fileObj = file.load({ id: companyFileID });
+                logoUrl = fileObj.url;
+            } catch (e) {
+                log.error('Logo Load Error', e);
+            }
+        }
         return {
             name: companyInfo.getValue({ fieldId: 'companyname' }),
-            logo: fileObj.url
+            logo: logoUrl
         };
     };
 
@@ -326,8 +342,8 @@ ${glRowsHtml}
 <table margin-top="5px" width="100%" style="page-break-inside: avoid; page-break-before:auto;font-size:10px">
 <tr border-top="0px" border-bottom="1px">
 <td colspan="6" align="left" border-bottom="1px" width="80%" style="font-size:12px"><b>Overall Total</b></td>
-<td align="right" border-bottom="1px" width="10%"><b>PHP<br />${xml.escape(numberWithCommas(totals.debTotal.toFixed(2)))}</b></td>
-<td align="right" border-bottom="1px" width="10%"><b>PHP<br />${xml.escape(numberWithCommas(totals.credTotal.toFixed(2)))}</b></td>
+<td align="right" border-bottom="1px" width="10%"><b>${xml.escape(String(headerData.currency || 'PHP'))}<br />${xml.escape(numberWithCommas(totals.debTotal.toFixed(2)))}</b></td>
+<td align="right" border-bottom="1px" width="10%"><b>${xml.escape(String(headerData.currency || 'PHP'))}<br />${xml.escape(numberWithCommas(totals.credTotal.toFixed(2)))}</b></td>
 </tr></table>
 </body>
 </pdf>`;

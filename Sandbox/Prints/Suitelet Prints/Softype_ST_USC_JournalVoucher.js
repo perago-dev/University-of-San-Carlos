@@ -83,10 +83,18 @@ define([
     const getCompanyData = () => {
         const companyInfo = config.load({ type: config.Type.COMPANY_INFORMATION });
         const companyFileID = companyInfo.getValue({ fieldId: 'pagelogo' });
-        const fileObj = file.load({ id: companyFileID });
+        let logoUrl = '';
+        if (companyFileID) {
+            try {
+                const fileObj = file.load({ id: companyFileID });
+                logoUrl = fileObj.url;
+            } catch (e) {
+                log.error('Logo Load Error', e);
+            }
+        }
         return {
             name: companyInfo.getValue({ fieldId: 'companyname' }),
-            logo: fileObj.url
+            logo: logoUrl
         };
     };
 

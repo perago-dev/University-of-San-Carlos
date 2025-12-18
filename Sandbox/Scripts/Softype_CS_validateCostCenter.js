@@ -105,8 +105,8 @@ define(['N/ui/dialog', 'N/log', './lib/constants'], (dialog, log, constants) => 
             if (validation.count > 1) {
                 showValidationError('Validation Error', validation.fields);
 
-                // Clear the field that was just changed
-                currentRecord.setValue({ fieldId, value: '' });
+                // Clear the field that was just changed (use null for reliable clearing of custom segments)
+                currentRecord.setValue({ fieldId, value: null });
                 log.audit('Field Cleared', `Cleared field: ${fieldId} due to multiple fields having values`);
             }
         } catch (e) {

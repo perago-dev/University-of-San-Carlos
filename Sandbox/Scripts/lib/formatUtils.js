@@ -22,12 +22,14 @@ define([], () => {
     };
 
     /**
-     * Format number with comma separators
+     * Format number with comma separators (only for integer part)
      * @param {number|string} value
      * @returns {string}
      */
     const numberWithCommas = (value) => {
-        return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const parts = value.toString().split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return parts.join('.');
     };
 
     /**
