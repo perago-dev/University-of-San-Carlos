@@ -74,7 +74,7 @@ define(['N/record', 'N/xml', 'N/render', 'N/runtime', 'N/search', 'N/config', 'N
                 var todaysDate = new Date();
                 var monthNames = ["Jan", "Feb", "March", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-                var day = todaysDate.getDate() + 1;
+                var day = todaysDate.getDate();
                 log.debug('date', todaysDate);
                 log.debug('day', day);
 
