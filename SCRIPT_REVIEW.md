@@ -14,7 +14,47 @@ Four scripts were reviewed in this repository. Several issues were identified ra
 
 ## Critical Issues
 
-### 1. Incorrect Timezone Calculation (UTC+15 Bug)
+### 1. Undefined `loadrec` Causes Script Crash
+
+**Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Lines 28-43)
+
+**Severity:** Critical
+**Impact:** Script crashes with unhandled error if `recordName` parameter is invalid
+
+**Description:**
+The script only defines `loadrec` inside conditional blocks for specific record types. If `recordName` is anything other than `"inventoryadjustment"` or `"deposit"`, `loadrec` remains undefined and the script crashes on line 43.
+
+**Current Code:**
+```javascript
+if (recordName == "inventoryadjustment") {
+    var loadrec = record.load({ type: 'inventoryadjustment', id: recordid, isDynamic: true });
+}
+
+if (recordName == "deposit") {
+    var loadrec = record.load({ type: 'deposit', id: recordid, isDynamic: true });
+}
+
+var trandate = loadrec.getText({ fieldId: 'trandate' });  // CRASH if loadrec undefined
+```
+
+**Recommended Fix:**
+```javascript
+var loadrec;
+if (recordName == "inventoryadjustment") {
+    loadrec = record.load({ type: 'inventoryadjustment', id: recordid, isDynamic: true });
+} else if (recordName == "deposit") {
+    loadrec = record.load({ type: 'deposit', id: recordid, isDynamic: true });
+} else {
+    throw error.create({
+        name: 'INVALID_RECORD_TYPE',
+        message: 'Unsupported record type: ' + recordName
+    });
+}
+```
+
+---
+
+### 2. Incorrect Timezone Calculation (UTC+15 Bug)
 
 **Affected Files:**
 - `Sandbox/Prints/Suitelet Prints/Softype_ST_CheckVoucher.js` (Line 75)
@@ -49,7 +89,40 @@ var PHPTime = new Date(manilaTime);
 
 ## High Priority Issues
 
-### 2. Inconsistent Currency Text Mapping
+### 3. `replace(',', '')` Only Removes First Comma
+
+**Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_CheckVoucher.js` (Lines 353, 527, 529, 533, 535, 623, 626)
+
+**Severity:** High
+**Impact:** Amounts over 1,000,000 are parsed incorrectly, causing wrong totals
+
+**Description:**
+JavaScript's `String.replace()` with a string argument only replaces the first occurrence. For amounts like `"1,234,567.89"`, only the first comma is removed, resulting in `"1234,567.89"` which `parseFloat()` truncates to `1234`.
+
+**Current Code:**
+```javascript
+parseFloat(creditamount.replace(',', ''));
+// "1,234,567.89".replace(',', '') → "1234,567.89" → parseFloat → 1234  ❌
+```
+
+**Recommended Fix:**
+```javascript
+parseFloat(creditamount.replace(/,/g, ''));
+// "1,234,567.89".replace(/,/g, '') → "1234567.89" → parseFloat → 1234567.89  ✓
+```
+
+**All Affected Lines:**
+- Line 353: `parseFloat(creditamount.replace(',', ''))`
+- Line 527: `parseFloat(creditamount.replace(',', ''))`
+- Line 529: `parseFloat(creditamount.replace(',', ''))`
+- Line 533: `parseFloat(debitamount.replace(',', ''))`
+- Line 535: `parseFloat(debitamount.replace(',', ''))`
+- Line 623: `parseFloat(creditamount)` (no replace, but related)
+- Line 626: `parseFloat(debitamount)` (no replace, but related)
+
+---
+
+### 4. Inconsistent Currency Text Mapping
 
 **Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_CheckVoucher.js` (Lines 78-86)
 
@@ -95,7 +168,33 @@ if (currency == 'USD') {
 
 ---
 
-### 3. Hardcoded Approver Names in Footer
+### 6. `xml.escape()` Called with Object Instead of String
+
+**Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_CheckVoucher.js` (Lines 613-618, 638-643)
+
+**Severity:** Medium
+**Impact:** PDF displays `[object Object]` instead of formatted amounts
+
+**Description:**
+The `xml.escape()` function expects a string argument, but the code passes an object with an `xmlText` property. This causes the output to render as `[object Object]`.
+
+**Current Code:**
+```javascript
+htmlvar += xml.escape({
+    xmlText: numberWithCommas(debitamountUSD.toFixed(2))
+}) + '</td>';
+// Output: "[object Object]"
+```
+
+**Recommended Fix:**
+```javascript
+htmlvar += xml.escape(numberWithCommas(debitamountUSD.toFixed(2))) + '</td>';
+// Output: "1,234.56"
+```
+
+---
+
+### 7. Hardcoded Approver Names in Footer
 
 **Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_CheckVoucher.js` (Lines 241-246)
 
@@ -130,7 +229,69 @@ htmlvar += '<td ...>Approved by:<p ...>' + xml.escape(approvedByName) + '</p></t
 
 ## Medium Priority Issues
 
-### 4. Inconsistent Error Message Terminology
+### 8. Missing `xml.escape()` on User Input Fields
+
+**Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Lines 375, 377, 417)
+
+**Severity:** Medium
+**Impact:** PDF generation fails or renders incorrectly if memo contains special characters
+
+**Description:**
+User-entered values (`tranid`, `trandate`, `memo`) are inserted directly into XML without escaping. If these fields contain `<`, `>`, `&`, or quotes, the PDF XML becomes invalid.
+
+**Current Code:**
+```javascript
+html += '...Reference No:</strong></span><span ...>' + tranid + '</span></td></tr>'
+html += '...Transaction Date:</strong></span><span ...>' + trandate + '</span></td></tr>'
+html += '<td ><b>Particular:</b>&nbsp;&nbsp;' + memo + '</td>'
+```
+
+**Recommended Fix:**
+```javascript
+html += '...Reference No:</strong></span><span ...>' + xml.escape(tranid) + '</span></td></tr>'
+html += '...Transaction Date:</strong></span><span ...>' + xml.escape(trandate) + '</span></td></tr>'
+html += '<td ><b>Particular:</b>&nbsp;&nbsp;' + xml.escape(memo) + '</td>'
+```
+
+---
+
+### 9. System Notes Search Hardcoded to `inventoryadjustment`
+
+**Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Lines 294-311)
+
+**Severity:** Medium
+**Impact:** "Prepared By" field is always blank for deposit records
+
+**Description:**
+The system notes search to find who created the record is hardcoded to search `inventoryadjustment` type, even when printing a deposit.
+
+**Current Code:**
+```javascript
+var system_obj = search.create({
+    type: 'inventoryadjustment',  // Hardcoded - won't find deposit system notes
+    filters: [["internalid", "anyof", recordid]],
+    columns: [
+        search.createColumn({ name: "name", join: "systemNotes" }),
+        search.createColumn({ name: "type", join: "systemNotes" })
+    ]
+});
+```
+
+**Recommended Fix:**
+```javascript
+var system_obj = search.create({
+    type: recordName,  // Use dynamic record type
+    filters: [["internalid", "anyof", recordid]],
+    columns: [
+        search.createColumn({ name: "name", join: "systemNotes" }),
+        search.createColumn({ name: "type", join: "systemNotes" })
+    ]
+});
+```
+
+---
+
+### 10. Inconsistent Error Message Terminology
 
 **Affected File:** `Sandbox/Scripts/Softype_CS_validateCostCenter.js` (Lines 52, 65)
 
@@ -162,7 +323,7 @@ message: 'Error: Only one field can have a value among Department, Class, and Co
 
 ---
 
-### 5. Missing pageInit Validation
+### 11. Missing pageInit Validation
 
 **Affected File:** `Sandbox/Scripts/Softype_CS_validateCostCenter.js`
 
@@ -199,7 +360,7 @@ return {
 
 ---
 
-### 6. Incorrect Script Description in Header
+### 12. Incorrect Script Description in Header
 
 **Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Line 9)
 
@@ -221,7 +382,7 @@ The JSDoc header says "Inventory Transfer Print" but the script handles inventor
 
 ---
 
-### 7. Hardcoded Print Title for Multiple Record Types
+### 13. Hardcoded Print Title for Multiple Record Types
 
 **Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Line 147)
 
@@ -244,7 +405,7 @@ html += '<td align="right"><span class="title">' + printTitle + '</span></td>'
 
 ---
 
-### 8. Fragile Exchange Rate Parsing in Template
+### 14. Fragile Exchange Rate Parsing in Template
 
 **Affected File:** `Sandbox/Prints/Advanced pdf prints/custtmpl_113_8226925_233.template.xml` (Line 69)
 
@@ -267,7 +428,7 @@ The exchange rate parsing uses string replacement that only handles specific cur
 
 ---
 
-### 9. Amount Matching Tolerance May Cause Incorrect Matches
+### 15. Amount Matching Tolerance May Cause Incorrect Matches
 
 **Affected File:** `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Line 93)
 
@@ -306,7 +467,38 @@ for (var j = 0; j < lineItemsData.length; j++) {
 
 ## Low Priority Issues
 
-### 10. SuiteScript Version Inconsistency
+### 16. Inconsistent Month Name Abbreviations
+
+**Affected Files:**
+- `Sandbox/Prints/Suitelet Prints/Softype_ST_CheckVoucher.js` (Line 363)
+- `Sandbox/Prints/Suitelet Prints/Softype_ST_USC_JournalVoucher.js` (Line 75)
+
+**Severity:** Low
+**Impact:** Cosmetic inconsistency in printed dates
+
+**Description:**
+The month names array mixes 3-letter abbreviations with full names.
+
+**Current Code:**
+```javascript
+var monthNames = ["Jan", "Feb", "March", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+//                 ^^^    ^^^    ^^^^^    ^^^^^                                  ^^^
+//                 3-char 3-char 5-char   5-char                                 3-char
+```
+
+**Recommended Fix:**
+```javascript
+// Option A: All abbreviated
+var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Option B: All full names
+var monthNames = ["January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December"];
+```
+
+---
+
+### 17. SuiteScript Version Inconsistency
 
 **Affected Files:**
 - `Softype_ST_CheckVoucher.js` uses `@NApiVersion 2.x`
@@ -322,22 +514,29 @@ Standardize on SuiteScript 2.1 for all scripts to enable modern JavaScript featu
 
 | # | Issue | File | Severity | Effort |
 |---|-------|------|----------|--------|
-| 1 | UTC+15 timezone bug | CheckVoucher, JournalVoucher | Critical | Low |
-| 2 | USD mapped to "Pesos" | CheckVoucher | High | Low |
-| 3 | Hardcoded approver names | CheckVoucher | High | Medium |
-| 4 | Inconsistent error terminology | validateCostCenter | Medium | Low |
-| 5 | Missing pageInit validation | validateCostCenter | Medium | Low |
-| 6 | Incorrect script description | JournalVoucher | Low | Low |
-| 7 | Hardcoded print title | JournalVoucher | Medium | Low |
-| 8 | Fragile exchange rate parsing | Vendor Credit Template | Medium | Low |
-| 9 | Amount matching tolerance | JournalVoucher | Medium | Medium |
-| 10 | SuiteScript version inconsistency | Multiple | Low | Low |
+| 1 | Undefined `loadrec` crash | JournalVoucher | **Critical** | Low |
+| 2 | UTC+15 timezone bug | CheckVoucher, JournalVoucher | **Critical** | Low |
+| 3 | `replace(',','')` only removes first comma | CheckVoucher | **High** | Low |
+| 4 | USD mapped to "Pesos" | CheckVoucher | High | Low |
+| 5 | Hardcoded approver names | CheckVoucher | High | Medium |
+| 6 | `xml.escape()` with object | CheckVoucher | Medium | Low |
+| 7 | Hardcoded approver names | CheckVoucher | High | Medium |
+| 8 | Missing `xml.escape()` on inputs | JournalVoucher | Medium | Low |
+| 9 | System notes search hardcoded | JournalVoucher | Medium | Low |
+| 10 | Inconsistent error terminology | validateCostCenter | Medium | Low |
+| 11 | Missing pageInit validation | validateCostCenter | Medium | Low |
+| 12 | Incorrect script description | JournalVoucher | Low | Low |
+| 13 | Hardcoded print title | JournalVoucher | Medium | Low |
+| 14 | Fragile exchange rate parsing | Vendor Credit Template | Medium | Low |
+| 15 | Amount matching tolerance | JournalVoucher | Medium | Medium |
+| 16 | Inconsistent month abbreviations | CheckVoucher, JournalVoucher | Low | Low |
+| 17 | SuiteScript version inconsistency | Multiple | Low | Low |
 
 ---
 
 ## Recommended Action Plan
 
-1. **Immediate:** Fix timezone calculation (Issue #1) - affects all printed documents
-2. **Short-term:** Fix currency text mapping (Issue #2) and error messages (Issue #4)
-3. **Medium-term:** Refactor hardcoded values to use configuration (Issue #3)
+1. **Immediate:** Fix critical issues (#1, #2, #3) — script crashes and data corruption
+2. **Short-term:** Fix high priority issues (#4, #5) and xml.escape issues (#6, #8)
+3. **Medium-term:** Refactor hardcoded values (#7), fix deposit support (#9, #13)
 4. **Ongoing:** Standardize coding practices across all scripts
