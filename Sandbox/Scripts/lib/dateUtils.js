@@ -10,7 +10,8 @@
 
 define([], () => {
 
-    const MANILA_UTC_OFFSET = 8;
+    // Manila/Cebu is UTC+8, no daylight saving
+    const MANILA_UTC_OFFSET_HOURS = 8;
 
     const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -18,12 +19,21 @@ define([], () => {
         "July", "August", "September", "October", "November", "December"];
 
     /**
-     * Get current time in Manila timezone (UTC+8)
-     * @returns {Date}
+     * Get current time in Manila/Cebu timezone (UTC+8)
+     *
+     * NetSuite server-side new Date() returns PST, not UTC.
+     * We use getTimezoneOffset() to convert to true UTC first,
+     * then add Manila's UTC+8 offset.
+     *
+     * @returns {Date} Date object with Manila time values
      */
     const getManilaTime = () => {
-        const utcNow = new Date();
-        return new Date(utcNow.getTime() + (MANILA_UTC_OFFSET * 60 * 60 * 1000));
+        const now = new Date();
+        // Convert to UTC milliseconds (getTimezoneOffset returns minutes, negative for PST)
+        const utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+        // Add Manila offset (UTC+8)
+        const manilaMs = utcMs + (MANILA_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+        return new Date(manilaMs);
     };
 
     /**
@@ -76,7 +86,7 @@ define([], () => {
     };
 
     return {
-        MANILA_UTC_OFFSET,
+        MANILA_UTC_OFFSET_HOURS,
         MONTH_NAMES_SHORT,
         MONTH_NAMES_FULL,
         getManilaTime,
