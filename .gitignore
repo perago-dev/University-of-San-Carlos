@@ -1,0 +1,20 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node (if using build tools)
+node_modules/
+package-lock.json
+
+# Logs
+*.log
+
+# NetSuite deployment
+deploy.xml
+.suitecloud/
